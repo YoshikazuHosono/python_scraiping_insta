@@ -12,6 +12,15 @@ from selenium import webdriver
 import requests
 import json
 
+FETCH_COUNT = 20
+
+SYSTEM_USER_ID = 1632264012 # TODO 自動で取る
+TARGET_USER_ID = 'mai_tano'
+
+INSTA_URL_HOME = 'https://www.instagram.com/'
+INSTA_URL_REMEMBER_ME = INSTA_URL_HOME + 'accounts/onetap/?next=%2F'
+INSTA_URL_TARGET_USER_PROFILE = INSTA_URL_HOME + TARGET_USER_ID
+
 def button_click(button_text):
     buttons = driver.find_elements_by_tag_name("button")
 
@@ -20,8 +29,22 @@ def button_click(button_text):
             button.click()
             break
 
+def createGetFollowerUrl(id,isAfter,endCursor):
+    param = {
+        "id" : id
+        ,"include_reel" : False
+        ,"fetch_mutual" : True
+        ,"first" : FETCH_COUNT
+    }
+
+    if isAfter:
+        param["after"] = endCursor
+
+    return "https://www.instagram.com/graphql/query/?query_hash=c76146de99bb02f6415203be841dd25a&variables=" + json.dumps(param)
+
+
 driver = webdriver.Chrome('C:\\00_BOX\\selenium_driver\\chrome\\win\\83.0.4103.39\\chromedriver.exe')
-driver.get('https://www.instagram.com/')
+driver.get(INSTA_URL_HOME)
 
 time.sleep(5)
 
@@ -30,11 +53,11 @@ driver.find_element_by_name("password").send_keys('tesla12coil')
 button_click("ログイン")
 time.sleep(5)
 
-if driver.current_url == "https://www.instagram.com/accounts/onetap/?next=%2F":
+if driver.current_url == INSTA_URL_REMEMBER_ME:
     button_click("後で")
     time.sleep(5)
 
-driver.get('https://www.instagram.com/mai_tano/')
+driver.get(INSTA_URL_TARGET_USER_PROFILE)
 time.sleep(5)
 
 session = requests.session()
@@ -43,7 +66,7 @@ for cookie in driver.get_cookies():
 
 driver.quit()
 
-result = session.get('https://www.instagram.com/graphql/query/?query_hash=c76146de99bb02f6415203be841dd25a&variables={"id":"1632264012","include_reel":false,"fetch_mutual":true,"first":30}')
+result = session.get(createGetFollowerUrl(SYSTEM_USER_ID,False,None))
 
 data = json.loads(result.text)
 
