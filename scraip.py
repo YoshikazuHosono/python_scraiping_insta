@@ -11,11 +11,13 @@ import time
 from selenium import webdriver
 import requests
 import json
+import re
 
 FETCH_COUNT = 20
+MAX_COUNT = FETCH_COUNT * 2
 
-SYSTEM_USER_ID = 1632264012 # TODO 自動で取る
 TARGET_USER_ID = 'mai_tano'
+GET_FOLLOWER_QUERY_HASH = 'c76146de99bb02f6415203be841dd25a'
 
 INSTA_URL_HOME = 'https://www.instagram.com/'
 INSTA_URL_REMEMBER_ME = INSTA_URL_HOME + 'accounts/onetap/?next=%2F'
@@ -39,8 +41,7 @@ def createGetFollowerUrl(id,isAfter,endCursor):
 
     if isAfter:
         param["after"] = endCursor
-
-    return "https://www.instagram.com/graphql/query/?query_hash=c76146de99bb02f6415203be841dd25a&variables=" + json.dumps(param)
+    return "https://www.instagram.com/graphql/query/?query_hash=" + GET_FOLLOWER_QUERY_HASH + "&variables=" + json.dumps(param)
 
 
 driver = webdriver.Chrome('C:\\00_BOX\\selenium_driver\\chrome\\win\\83.0.4103.39\\chromedriver.exe')
@@ -57,19 +58,32 @@ if driver.current_url == INSTA_URL_REMEMBER_ME:
     button_click("後で")
     time.sleep(5)
 
-driver.get(INSTA_URL_TARGET_USER_PROFILE)
-time.sleep(5)
-
 session = requests.session()
 for cookie in driver.get_cookies():
     session.cookies.set(cookie["name"], cookie["value"])
 
 driver.quit()
 
-result = session.get(createGetFollowerUrl(SYSTEM_USER_ID,False,None))
+profileResult = session.get(INSTA_URL_TARGET_USER_PROFILE)
+m = re.search('<script type="text\/javascript">window\._sharedData \= (.*?);<\/script>',profileResult.text)
+profileDict = json.loads(m.group(1))
+system_user_id = profileDict["entry_data"]["ProfilePage"][0]["graphql"]["user"]["id"]
 
+result = session.get(createGetFollowerUrl(system_user_id,False,None))
 data = json.loads(result.text)
 
-list = data["data"]["user"]["edge_followed_by"]["edges"]
-for node in list:
-    print(node["node"]["username"])
+userNameList = [node["node"]["username"] for node in data["data"]["user"]["edge_followed_by"]["edges"]]
+pageInfo = data["data"]["user"]["edge_followed_by"]["page_info"]
+hasNext = pageInfo["has_next_page"]
+
+while len(userNameList) < MAX_COUNT and hasNext:
+    result2 = session.get(createGetFollowerUrl(system_user_id,True,pageInfo["end_cursor"]))
+    data2 = json.loads(result2.text)
+    userNameList2 = [node["node"]["username"] for node in data2["data"]["user"]["edge_followed_by"]["edges"]]
+    pageInfo = data2["data"]["user"]["edge_followed_by"]["page_info"]
+    hasNext = pageInfo["has_next_page"]
+    userNameList.extend(userNameList2)
+
+print(len(userNameList))
+for userName in userNameList:
+    print(userName)
