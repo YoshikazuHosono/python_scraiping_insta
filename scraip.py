@@ -13,6 +13,9 @@ import requests
 import json
 import re
 
+LOGIN_USER = 'user'
+LOGIN_PSWD = 'password'
+
 FETCH_COUNT = 20
 MAX_COUNT = FETCH_COUNT * 2
 
@@ -49,8 +52,8 @@ driver.get(INSTA_URL_HOME)
 
 time.sleep(5)
 
-driver.find_element_by_name("username").send_keys('yyhhwork@gmail.com')
-driver.find_element_by_name("password").send_keys('tesla12coil')
+driver.find_element_by_name("username").send_keys(LOGIN_USER)
+driver.find_element_by_name("password").send_keys(LOGIN_PSWD)
 button_click("ログイン")
 time.sleep(5)
 
